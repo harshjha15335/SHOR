@@ -1,6 +1,6 @@
-# Claude Code implementation directive: Make SHOR//LAB award-ready
+# Claude Code implementation directive: Make SHOR award-ready
 
-You are taking over the original SHOR//LAB repository. Inspect the entire repository and tests before changing anything. Do **not** rebuild the product from scratch, silently replace the working UI, or copy source from Kasauti. The target competition is the Great Indian AI Internship Challenge, with a November 10, 2026 deadline and the **Noise Canceller Award** as the primary technical category.
+You are taking over the original SHOR repository. Inspect the entire repository and tests before changing anything. Do **not** rebuild the product from scratch, silently replace the working UI, or copy source from Kasauti. The target competition is the Great Indian AI Internship Challenge, with a November 10, 2026 deadline and the **Noise Canceller Award** as the primary technical category.
 
 ## Baseline
 

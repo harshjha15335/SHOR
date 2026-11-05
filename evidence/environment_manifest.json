@@ -3,5 +3,15 @@
   "platform": "Linux",
   "baseline_commit": "b82591f11c1522ce356bd33a526dc0411e6a02aa",
   "live_calls_executed": 0,
-  "note": "Software versions are pinned separately in requirements lock. This manifest describes development, not a live benchmark."
+  "note": "Software versions are pinned separately in requirements lock. This manifest describes development, not a live benchmark.",
+  "engineering_commit": "7a9bd9d",
+  "software_validation": {
+    "pytest_passed": 175,
+    "pytest_failed": 0,
+    "warning": "Starlette/httpx deprecation",
+    "browser": "desktop/tablet/mobile synthetic fixtures, real interactions",
+    "gnani_requests": 0
+  },
+  "dependency_pins": "requirements-lock.txt",
+  "runtime_activation": "BLOCKED: no injected key/endpoint policy applied"
 }

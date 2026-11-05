@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "checks": [
+    "desktop: upload, adaptive preview, empty metrics, WAV playback, history filter/open, CSV/JSON download, deletion and no horizontal overflow",
+    "tablet: upload, adaptive preview, empty metrics, WAV playback, history filter/open, CSV/JSON download, deletion and no horizontal overflow",
+    "mobile: upload, adaptive preview, empty metrics, WAV playback, history filter/open, CSV/JSON download, deletion and no horizontal overflow",
+    "Malformed WAV: visible safe error and controls recover",
+    "Microphone start/stop with Chromium synthetic media device; no physical microphone validation",
+    "Microphone permission denial: safe user-visible fallback to upload"
+  ],
+  "gnani_requests": 0,
+  "audio": "Synthetic tone / Chromium fake microphone; software tests only"
+}

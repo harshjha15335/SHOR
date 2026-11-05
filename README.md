@@ -1,119 +1,85 @@
-# shor — Indic Speech Reliability & Recovery Lab
+# SHOR — Indic Speech Reliability & Recovery Lab
 
-**Original, reproducible speech recognition stress testing for Indian-language audio, powered by real Gnani Prisma API calls.** Built as a starting point for the [Great Indian AI Internship Challenge](https://www.gnani.ai/internship), especially the Noise Canceller Award.
+SHOR measures how recognition fails on Indian-language speech and compares audio recovery without letting the recovery policy read the reference transcript. It extends the supplied FastAPI application and its dark/lime browser interface; it does not modify Gnani model weights.
 
-> **Status: working local MVP, NOT a validated competition submission.** The core audio/test/metrics stack is implemented. The local test suite passes. No Gnani API key was available during construction, so no production transcription or winning-score claim has been made.
+**Current evidence:** the local preview workflow works; live Gnani inference, a real multi-speaker benchmark, held-out recovery gains and award readiness remain unvalidated. Software test doubles and synthetic tones are not speech-performance evidence. See [baseline audit](docs/BASELINE_AUDIT.md), [API validation](evidence/API_validation.md) and [results status](evidence/RESULTS.md).
 
-## What it does
+## What works locally
 
-1. Upload or record a **consented, ≤30-second PCM WAV** (8–96kHz, mono/stereo). Browser recording saves WAV locally.
-2. Supply an **exact ground-truth transcript**, ideally in the same writing system the selected model will return.
-3. Configure noise (synthetic broadband/crowd-like/traffic-like/hum OR a *real, uploaded ambient noise recording*), target SNR, optional 300–3400Hz telephone-style channel, deterministic random seed.
-4. Generate three audio variants: **clean** (reference), **degraded**, **recovered** (stationary spectral-gating of degraded audio). All three files are playable.
-5. In **Preview** mode: generate audio without model inference. No accuracy numbers are invented.
-6. In **Live** mode: run **three REAL REST transcription requests to Gnani Prisma**, measure WER/CER and exact critical term retention, and display all raw transcripts, errors and wall-clock times.
-7. Browse experiment history and export a CSV with original evidence.
+- Upload or record short PCM WAV audio: 0.2–30 seconds, 8–96 kHz mono/stereo, supported 8/16/32-bit PCM, up to 8 MB per file. Browser microphone capture requires a secure origin and permission.
+- Generate original, degraded and recovered signals using deterministic synthetic noise, uploaded ambience and optional **simulated** telephone filtering. Actual noisy recordings must be labeled separately.
+- Choose pass-through, fixed spectral attenuation or an interpretable, reference-free acoustic recovery heuristic. It may worsen speech recognition; no improvement is guaranteed.
+- Score real transcripts using strict script-preserving or Unicode-normalized WER/CER; inspect deterministic word alignments, substitution/deletion/insertion counts, exact critical-term/number/phrase recall and labeled heuristic review prompts.
+- Inspect evidence hashes, real provider metadata when returned, processing decisions, request errors, history filters and a benchmark overview. Preview scores remain unmeasured.
+- Export CSV/JSON and delete runs and audio. Default local retention is seven days on access, with a 500-run cap. Optional private-demo authentication and request limits are included; these do not constitute a production security certification.
 
-**IMPORTANT:** The recovery is a simple signal-processing filter. It is **not** a trained AI denoiser or an auto-corrected transcript. It can help, do nothing, or harm accuracy; the UI reports whichever outcome the real model produces. Synthetic traffic/crowd-like mixtures are **not real telephonic audio**. To pursue Gnani's Noise Canceller award, gather and evaluate **consented actual noisy recordings or real phone audio** separately.
+## Run
 
-## Quick start (Windows 11 / PowerShell)
-
-```powershell
-cd shorlab
-py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements-dev.txt
-Copy-Item .env.example .env
-# Edit .env and set GNANI_API_KEY=YOUR_KEY (do not commit it)
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-Open **http://127.0.0.1:8000**. Without a key, **Preview audio only** still works. Browser recording needs a localhost or HTTPS origin and microphone permission.
-
-macOS/Linux:
-```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
-cp .env.example .env
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-## API key and Gnani models
-
-Get programme registration and credits from **https://www.gnani.ai/internship**; create an API key from **https://app.gnani.ai/voice**. Put it in server-side `.env` only. Never expose your key in client-side JS, GitHub, logs or demos.
-
-Implementation verified against [Gnani's official REST transcription documentation](https://docs.gnani.ai/api/STT/speech-to-text):
-
-- `POST https://api.vachana.ai/stt/v3`
-- `X-API-Key-ID` server-side header
-- `multipart/form-data`: `audio_file`, `model`, `language_code`, `format=verbatim`
-- Prisma v2.5 selected by default; Prisma v3.0 optionally available
-- `indic-auto` supported on v3.0, not v2.5
-- **Up to 30 seconds per clip**, so split longer recordings before upload.
-
-The app makes **three billable/credit-consuming Gnani requests per live run**. Do not mistake source WAV preview or mocked unit tests for a real model benchmark.
-
-## Project structure
-
-```
-app/main.py            FastAPI REST endpoints and experiment orchestration
-app/audio.py           WAV I/O, deterministic noise injection, telephony and recovery
-app/gnani.py           Real Gnani API adapter, guarded credentials, response errors
-app/metrics.py         Unicode-aware WER, CER and critical phrase checks
-app/storage.py         SQLite history and local WAV artifacts
-app/static/            Original responsive dark UI (no JS build step)
-scripts/               Reproducible CSV batch evaluator
-samples/               [not included: record consented speech yourself]
-tests/                 Unit and API tests
-docs/recording-script.md 20 suggested prompts across Indian languages
-docs/benchmark-manifest-template.csv  Benchmark manifest example
-```
-
-## Tests
+Use Python 3.12 from the repository root:
 
 ```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements-lock.txt
 python -m pytest -q
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Unit tests cover round-trip WAV encoding, audio length, deterministic noise profiles, recovery output, Unicode handling, WER, exact critical terms, local preview truthfulness, and API refusal without a key. These are **software tests**, not demonstrations of improved ASR.
+On Windows, use `py -3.12 -m venv .venv`, activate `.\.venv\Scripts\Activate.ps1`, then the same Python commands. Dependency ranges remain in `requirements.txt` and `requirements-dev.txt`; `requirements-lock.txt` records the resolved test environment. A CI workflow is provided, but remote CI success must be checked rather than assumed.
 
-## Batch evaluation
+Preview mode needs no account. Live requests require server-side `GNANI_API_KEY`, an allowed route to `api.vachana.ai`, supported account entitlement and available credits. Set the key securely in environment settings or an ignored `.env`; never paste it into browser code or Git. Configuration saving does not automatically prove runtime activation. Health distinguishes key presence from observed successful requests.
 
-Record test WAV clips and write a CSV manifest beside your recordings (see `docs/benchmark-manifest-template.csv`). Then:
+The web live action requires explicit approval for **three requests**. First use the separate one-call smoke runner with a reviewed, consented real recording; do not start a full benchmark before access and the credit budget are understood. No automatic retry is performed; a timeout may still have consumed credits.
+
+## Architecture and integration
+
+Browser → FastAPI → WAV validation / noise transformations → selected audio recovery → optional Gnani REST calls → scoring → local SQLite and WAV artifacts.
+
+| File | Responsibility |
+|---|---|
+| `app/main.py` | Workbench, evidence API, bounded uploads, private-demo controls |
+| `app/audio.py` | PCM conversion, deterministic mixtures, simulated telephone channel |
+| `app/recovery.py` | Reference-free acoustic policy and decision evidence |
+| `app/metrics.py` | Script-preserving metrics, alignment and critical-term diagnostics |
+| `app/gnani.py` | Server-side REST adapter and observed integration status |
+| `app/storage.py` | Local history, deletion and retention |
+| `app/benchmark.py` | Manifest validation and offline weighted summaries |
+| `scripts/` | Budgeted live smoke/benchmark runners and offline summary regeneration |
+
+The retained adapter uses `POST https://api.vachana.ai/stt/v3`, `X-API-Key-ID`, multipart `audio_file`, `model`, `language_code`, and `format=verbatim`. Selectors support Prisma v2.5 and v3.0, with `indic-auto` restricted to v3.0. **Current official documentation could not be reverified because the proxy returned 403.** No new undocumented parameters were added. Returned model IDs and request IDs remain null when the provider omits them; requested model is recorded separately.
+
+## Collect and reproduce evidence
+
+Copy the header-only [dataset template](evidence/dataset_manifest.csv) outside the repository, collect consented real recordings, and review exact transcripts before inference. See [collection protocol](evidence/evaluation_protocol.md), [data dictionary](evidence/data_dictionary.md) and [research method](docs/RESEARCH_METHOD.md). Target Hindi/Hinglish and Tamil/Tanglish first; additional selector options do not prove language-specific quality.
 
 ```bash
-python scripts/batch_benchmark.py --manifest docs/my-manifest.csv --limit 4 --dry-run
-python scripts/batch_benchmark.py --manifest docs/my-manifest.csv --output evidence.csv --limit 4 --model prisma-v2.5
+# Local validation and transformations; no model requests.
+python scripts/batch_benchmark.py --manifest /private/manifest.csv --dry-run --limit 20
+
+# ONE real request; requires secure credentials, access and reviewed real speech.
+python scripts/live_smoke.py --manifest /private/manifest.csv --sample-id SAMPLE_ID \
+  --allow-one-live-call --output evidence/raw_results/smoke.jsonl
+
+# Optional paired comparison, only AFTER approval for its eight calls.
+python scripts/batch_benchmark.py --manifest /private/manifest.csv --limit 1 \
+  --models prisma-v2.5 prisma-v3.0 --allow-live --max-api-calls 8 \
+  --output evidence/raw_results/paired.jsonl
+
+# Existing evidence only; no API calls or credits.
+python scripts/summarize_evidence.py evidence/raw_results/paired.jsonl \
+  --output evidence/aggregate_results/paired.json
 ```
 
-Each valid row triggers three real requests, unless `--dry-run`. The CSV records a SHA-256 of source WAV, model, profile, language, SNR, seed, true API request IDs, raw transcripts, WER/CER and explicit errors. Never tune your method on the final held-out test clips.
+The research batch runner uses **four variants per model**: clean, degraded, fixed and adaptive. This differs intentionally from the web workbench's three-path experiment. Live runners preserve errors and refuse output-file overwrites. Corpus WER uses total edits / total reference words; macro WER is separately labeled. Use matched sample/model groups when comparing recovery. Empty data does not imply zero error.
 
-## Critical research caveats
+## Limits and privacy
 
-- **WER** = `(substitutions + deletions + insertions) / reference words × 100`; it may exceed 100%. **CER** similarly counts character edits.
-- Tokenization uses NFKC casefolding and punctuation stripping while preserving Indic scripts. It is not code-mix-aware transliteration, so a Hindi native-script reference and Romanized hypothesis can appear artificially wrong. Specify a consistent annotation policy.
-- Critical term checks are simple exact token/phrase matches, not semantic inference. Only terms present in the reference are eligible for recall.
-- Audio SNR is set relative to the full-signal RMS; active speech SNR may differ when recordings have silence.
-- A simulated phone bandpass is NOT a real PSTN codec/network or a verified phone-call test.
-- This local MVP does not include authentication, multi-tenant isolation, data deletion or upload-abuse protection. **Do not deploy publicly as-is.** Local `data/` contains raw audio + reference text and is gitignored.
-- The app does not store your API key and never sends it to the browser.
+No real speech dataset, consenting speaker count, authenticated provider request, measured ASR gain, confidence claim, or live demo video is supplied. The acoustic policy is a deterministic engineering hypothesis, not a trained or tuned denoiser. Exact number recall does not equate digits and number words. Cross-script transliteration is not silently applied. Actual call audio and synthetic telephone filtering are different conditions.
 
-## Award-ready improvements (next milestones)
+Keep recordings, filled manifests, raw evidence and credentials private. `.gitignore` is an accidental-commit safeguard, not anonymization. SQLite/WAV storage is local plaintext. Deletion does not erase external backups or SQLite forensic remnants. Read [deployment guidance](docs/DEPLOYMENT.md) before any remote access. Public deployment and competition publication have not been performed.
 
-1. Obtain actual self-recorded/consented noisy speech and a proper blind evaluation set with at least 3 speakers.
-2. Build an **adaptive recovery policy** that chooses the original or filtered audio without peeking at the ground-truth transcript. Prove change on a held-out set; include cases where recovery loses.
-3. Compare v2.5 and v3.0 in a paired benchmark, consistently preserving output formatting and language.
-4. Track code-switch segments, proper nouns, critical numbers and user-important failure cases.
-5. Turn the results into a 60-second transparent video showing real API requests, audio, reference and side-by-side transcriptions. Post first on LinkedIn/X with `#GnaniAI` and `#GreatIndianAIInternshipChallenge`; submit the designated links before **November 10, 2026, 11:59 PM IST**.
+## Competition and attribution
 
-## Inspiration and attribution
+The supplied brief targets the Noise Canceller Award within the Great Indian AI Internship Challenge and cites 10 November 2026, 11:59 PM IST. These terms and current registration requirements were not independently reverified. Check the [official programme page](https://www.gnani.ai/internship) before submission. [Submission materials](docs/SUBMISSION_PACKAGE.md) are drafts with explicit evidence gaps.
 
-Inspired at a high level by public discussion of **Kasauti (कसौटी)**, an Indic voice-agent test platform, which was shared in Bolna's builders community. shor is a **fresh implementation** focused on audio reliability benchmarking, with independently authored code and a distinct workflow. Do not claim Kasauti's results or copy its code/assets without checking its license and attribution requirements.
-
-## Academic honesty and safety
-
-No synthetic performance claims; no hidden use of gold transcripts to choose best outputs; no simulated calls presented as real calls; no real customer personal data. Consent is required before collecting speech/ambient recordings. Do not upload sensitive medical, financial or identity information.
-
-## Cloud development
-
-From `/workspace/SHOR`, install `requirements-dev.txt` into a Python 3.12 virtual environment, run `python -m pytest -q`, then `python -m uvicorn app.main:app --host 127.0.0.1 --port 8000`. Configure `GNANI_API_KEY` server-side through environment settings or an ignored `.env`. Tests use local fixtures and mocked inference, and are not live Gnani evidence.
+Kasauti is credited as conceptual inspiration only. SHOR's scope is independently implemented speech reliability measurement and reference-free recovery. No Kasauti code/assets or results are claimed. No new license or ownership representation is made; resolve rights and contributor permissions before distribution under a chosen license.
