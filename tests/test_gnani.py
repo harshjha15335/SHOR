@@ -120,3 +120,13 @@ def test_redirect_does_not_forward_credentials(audio,monkeypatch):
     with pytest.raises(gnani.GnaniError):gnani.transcribe(audio,'hi-IN','prisma-v2.5')
     assert post.call_args.kwargs['allow_redirects'] is False
     post.assert_called_once()
+
+
+@pytest.mark.parametrize('model,expected',[('prisma-v2.5',{'language_code':'hi-IN','format':'verbatim'}),('prisma-v3.0',{'language_code':'hi-IN','format':'verbatim','model':'prisma-v3.0'})])
+def test_model_selection_matches_current_official_rest_docs(audio,monkeypatch,model,expected):
+    _,post=response(monkeypatch)
+    result=gnani.transcribe(audio,'hi-IN',model)
+    assert post.call_args.kwargs['data']==expected
+    assert result['request_parameters']==expected
+    assert result['http_status']==200
+    assert result['requested_model']==model

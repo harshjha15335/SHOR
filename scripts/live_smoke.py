@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """One explicit real call on one reviewed, consented manifest sample. No retries."""
-import argparse,hashlib,json,sys,os,platform,subprocess
+import argparse,hashlib,json,sys,os,platform,subprocess,time
 from datetime import datetime,timezone
 from pathlib import Path
 from uuid import uuid4
@@ -32,10 +32,11 @@ def main():
     content=encode_wav(row['_audio']); experiment=str(uuid4())
     record={'schema_version':1,'experiment_id':experiment,'sample_id':row['sample_id'],'speaker_id':row['speaker_id'],'dataset_split':row['dataset_split'],'language':row['language'],'condition':row['audio_condition'],'model':args.model,'format':'verbatim','variant':'clean','source_sha256':row['file_sha256'],'audio_sha256':hashlib.sha256(content).hexdigest(),'reference':row['reference_transcript'],'requested_at':datetime.now(timezone.utc).isoformat(),'metrics':None,'code_commit':subprocess.run(['git','rev-parse','HEAD'],capture_output=True,text=True,check=True).stdout.strip(),'python_version':platform.python_version(),'dataset_metadata':{k:row[k] for k in ['consent_status','reference_review_status','transcript_script_convention','code_mixed','recording_environment','recording_device_category','original_sample_rate','processed_sample_rate','duration_seconds','source_utterance_id']}}
     # Prove the evidence destination can be opened before spending any credits.
-    args.output.parent.mkdir(parents=True,exist_ok=True)
-    with args.output.open('x',encoding='utf-8') as f:
+    args.output.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
+    with open(args.output,'x',encoding='utf-8',opener=lambda path,flags:os.open(path,flags,0o600)) as f:
         f.flush();os.fsync(f.fileno())
         failed=False
+        started=time.perf_counter()
         try:
             record.update(transcribe(content,row['language'],args.model))
             try:
@@ -43,8 +44,9 @@ def main():
             except ValueError as exc:
                 failed=True;record['metrics_error']=str(exc)
         except (GnaniError,ValueError) as exc:
-            failed=True;record.update(status='error',error=str(exc),error_code=getattr(exc,'code','evaluation_error'),transcript=None)
+            failed=True;record.update(status='error',error=str(exc),error_code=getattr(exc,'code','evaluation_error'),http_status=getattr(exc,'http_status',None),transcript=None,wall_time_seconds=round(time.perf_counter()-started,6))
         record['completed_at']=datetime.now(timezone.utc).isoformat()
+        record['request_attempts']=1
         f.write(json.dumps(record,ensure_ascii=False)+'\n');f.flush();os.fsync(f.fileno())
     print('One API call attempted; evidence saved locally. Status:',record['status'])
     if failed:raise SystemExit(1)

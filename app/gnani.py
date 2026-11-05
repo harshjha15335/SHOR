@@ -82,7 +82,10 @@ def transcribe(wav_bytes: bytes, language: str, model: str) -> dict:
         raise GnaniError("Audio must be a nonempty WAV of at most 8 MB", "invalid_audio")
     if wav_bytes[:4] != b"RIFF" or wav_bytes[8:12] != b"WAVE":
         raise GnaniError("Audio must use a WAV container", "invalid_audio")
-    params = {"model": model, "language_code": language, "format": "verbatim"}
+    params = {"language_code": language, "format": "verbatim"}
+    # Official REST docs: omit model for default v2.5; only v3.0 is an explicit option.
+    if model == "prisma-v3.0":
+        params["model"] = model
     submitted_at = datetime.now(timezone.utc).isoformat()
     start = time.perf_counter()
     response = None
@@ -129,7 +132,7 @@ def transcribe(wav_bytes: bytes, language: str, model: str) -> dict:
             _state["validated_models"] = sorted(set(_state["validated_models"]) | {model})
             _state["last_successful_request_at"] = received_at
             _state["last_connection_error"] = None
-        return {"status": "real", "transcript": transcript,
+        return {"status": "real", "http_status": http_status, "request_parameters": dict(params), "transcript": transcript,
                 "request_id": _optional_string(data.get("request_id")),
                 "api_model": _optional_string(data.get("model"), 128),
                 "requested_model": model, "language": language, "format": "verbatim",

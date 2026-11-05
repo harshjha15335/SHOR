@@ -208,3 +208,22 @@ def test_web_repeated_source_counts_one_audio_sample():
     def run(i):
         return {'id': i, 'source_sha256':'same-source-hash','results':{'clean':{'status':'real','metrics':None}}}
     assert summarize_runs([run('first'),run('repeat')])['real_samples']==1
+
+
+def test_smoke_records_actual_failure_status_timing_and_private_file(tmp_path,monkeypatch):
+    from app.gnani import GnaniError
+    path,_=manifest(tmp_path);runner=load_runner('live_smoke')
+    monkeypatch.setattr(runner,'configured',lambda:True)
+    calls=[]
+    def failed(*args):
+        calls.append(args)
+        raise GnaniError('Test-only access denied','access_denied',403)
+    monkeypatch.setattr(runner,'transcribe',failed)
+    output=tmp_path/'private-smoke.jsonl'
+    monkeypatch.setattr('sys.argv',['smoke','--manifest',str(path),'--sample-id','fixture-1','--allow-one-live-call','--output',str(output)])
+    with pytest.raises(SystemExit):runner.main()
+    record=json.loads(output.read_text())
+    assert len(calls)==1 and record['request_attempts']==1
+    assert record['http_status']==403 and record['error_code']=='access_denied'
+    assert record['wall_time_seconds']>=0 and record['transcript'] is None
+    assert output.stat().st_mode & 0o777 == 0o600
