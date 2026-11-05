@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0b1014" />
+<title>shor — Indic Speech Reliability</title>
+<link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="shor home"><span class="brand-icon">S<span>//</span></span><span>shor<small>INDIC SPEECH INTELLIGENCE</small></span></a>
+    <div class="nav-caption">WORKSPACE</div>
+    <a href="#workbench" class="nav-link active"><span class="nav-icon">◈</span> Stress workbench <span class="nav-arrow">↗</span></a>
+    <a href="#results" class="nav-link"><span class="nav-icon">▤</span> Evaluation results</a>
+    <a href="#history" class="nav-link"><span class="nav-icon">◷</span> Run history</a>
+    <div class="sidebar-bottom">
+      <div class="side-label">SYSTEM STATUS</div>
+      <div class="system-status"><span id="system-dot" class="dot amber"></span><span id="system-text">Checking configuration</span></div>
+      <p>Built for evidence, not impressive-looking fake benchmarks.</p>
+      <div class="side-divider"></div>
+      <div class="powered">POWERED BY <strong>GNANI PRISMA</strong><br /><span>Voice AI for India</span></div>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb">EXPERIMENTS <span>/</span> SPEECH RELIABILITY</div>
+      <div class="topright"><span class="tag">RESEARCH PREVIEW · v0.1</span> <a href="https://docs.gnani.ai/api/STT/speech-to-text" target="_blank" rel="noopener noreferrer">API DOCS ↗</a></div>
+    </header>
+    <div class="content">
+      <section class="hero">
+        <div class="hero-eyebrow"><span class="tiny-pulse"></span> INDIC AUDIO TEST BENCH</div>
+        <h1>When the world gets <em>loud,</em><br /><span>does AI still listen?</span></h1>
+        <p>Break speech recognition deliberately. Compare real Gnani Prisma outputs across clean, degraded and recovered audio. Measure every failure. Publish only what the data proves.</p>
+        <div class="hero-footer"><div class="hero-mini"><strong>01</strong> Controlled degradation</div><div class="hero-mini"><strong>02</strong> Real model inference</div><div class="hero-mini"><strong>03</strong> Reproducible evidence</div></div>
+        <div class="hero-decoration" aria-hidden="true"><i style="height:32%"></i><i style="height:63%"></i><i style="height:20%"></i><i style="height:87%"></i><i style="height:47%"></i><i style="height:70%"></i><i style="height:36%"></i><i style="height:95%"></i><i style="height:55%"></i><i style="height:30%"></i><i style="height:72%"></i><i style="height:44%"></i><i style="height:88%"></i><i style="height:37%"></i><i style="height:60%"></i><i style="height:27%"></i><i style="height:77%"></i></div>
+      </section>
+      <section id="workbench" class="workspace">
+        <div class="section-heading"><div><span class="section-kicker">01 / SETUP</span><h2>Stress workbench</h2></div><span class="section-meta">ONE RECORDING · THREE SIGNAL PATHS</span></div>
+        <form id="experiment-form" class="work-grid">
+          <div class="panel upload-panel">
+            <div class="panel-title"><span class="corner-square">↥</span><span>Source audio</span><span class="panel-count">A</span></div>
+            <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose a WAV recording"><input id="audio-file" name="audio_file" type="file" accept=".wav,audio/wav" hidden />
+              <div class="drop-graphic">♫<span>⌁</span></div><strong id="file-title">Drop a PCM WAV file here</strong><span id="file-desc">or click to select a recording (≤ 30 seconds)</span><div class="file-format">WAV · 8–96 kHz · 8 MB MAX</div>
+            </div>
+            <div class="record-row"><button type="button" class="button-secondary" id="record-button">● Record microphone</button><span id="record-status">Browser recording saves a PCM WAV</span></div>
+            <canvas id="waveform" class="waveform" height="100" aria-label="Waveform of selected audio" role="img"></canvas>
+            <label class="field-label" for="reference">REFERENCE TRANSCRIPT <span>required for accuracy measurements</span></label>
+            <textarea id="reference" name="reference" placeholder="Type exactly what was spoken, in the same script. e.g. मुझे कल बारह बजे कॉल करना है" rows="3" maxlength="2500"></textarea>
+            <label class="field-label" for="critical_terms">CRITICAL TERMS <span>optional, comma-separated</span></label>
+            <input id="critical_terms" name="critical_terms" placeholder="e.g. tomorrow, 1200, rupay" maxlength="500" />
+          </div>
+          <div class="panel settings-panel">
+            <div class="panel-title"><span class="corner-square">⚑</span><span>Experiment controls</span><span class="panel-count">B</span></div>
+            <div class="settings-stack">
+              <div class="two-cols"><label class="field-group">MODEL<select id="model" name="model"><option value="prisma-v2.5">Prisma v2.5 · challenge</option><option value="prisma-v3.0">Prisma v3.0</option></select></label>
+                <label class="field-group">LANGUAGE<select id="language" name="language"><option value="hi-IN">Hindi · hi-IN</option><option value="en-IN">English · en-IN</option><option value="ta-IN">Tamil · ta-IN</option><option value="kn-IN">Kannada · kn-IN</option><option value="te-IN">Telugu · te-IN</option><option value="bn-IN">Bengali · bn-IN</option><option value="mr-IN">Marathi · mr-IN</option><option value="gu-IN">Gujarati · gu-IN</option><option value="ml-IN">Malayalam · ml-IN</option><option value="pa-IN">Punjabi · pa-IN</option></select></label></div>
+              <label class="field-group">NOISE PROFILE<select id="profile" name="profile"><option value="traffic_synthetic">Simulated traffic-like noise</option><option value="crowd_synthetic">Simulated crowd-like noise</option><option value="broadband">Broadband noise</option><option value="hum_synthetic">Electrical hum (synthetic)</option><option value="uploaded_ambience">My real ambient recording</option><option value="none">No added noise</option></select></label>
+              <div id="ambience-field" class="hidden"><label class="field-label" for="ambience_file">RECORDED AMBIENCE · WAV</label><input id="ambience_file" type="file" name="ambience_file" accept=".wav,audio/wav"></div>
+              <div class="range-head"><label for="snr">SIGNAL-TO-NOISE RATIO</label><output id="snr-output" for="snr">8 dB</output></div>
+              <input id="snr" name="snr_db" type="range" min="-5" max="30" step="1" value="8" /><div class="range-ends"><span>HARDER TO HEAR</span><span>CLEANER</span></div>
+              <label class="toggle-row"><span><strong>Simulated telephone channel</strong><small>300–3400 Hz + 8 kHz round-trip</small></span><span class="switch"><input type="checkbox" name="telephony" id="telephony" checked><span class="track"></span></span></label>
+              <div class="two-cols"><label class="field-group">REPRODUCIBILITY SEED<input name="seed" id="seed" type="number" min="0" max="10000000" value="42" /></label><label class="field-group">RUN NAME<input name="title" id="title" value="First Indic stress test" maxlength="90"></label></div>
+            </div>
+            <div class="run-box"><div class="run-title">READY TO TEST <span id="api-call-count">3 API CALLS</span></div>
+              <p id="run-explainer">Live mode sends three actual transcriptions to Gnani. Each may consume credits. Preview mode makes zero API calls.</p>
+              <div class="run-actions"><button class="primary-button" type="submit" id="live-button" name="mode" value="live">▶ Run real Gnani evaluation</button><button class="button-secondary" type="button" id="preview-button">Preview audio only</button></div>
+              <div id="form-status" class="form-status" aria-live="polite"></div>
+            </div>
+          </div>
+        </form>
+      </section>
+      <section id="results" class="results-section">
+        <div class="section-heading"><div><span class="section-kicker">02 / EVALUATION</span><h2>What the model actually heard</h2></div><span id="results-state" class="status-chip">NO EXPERIMENT YET</span></div>
+        <div id="empty-results" class="empty-state"><span class="empty-icon">◉</span><strong>No measurements yet.</strong><p>Provide a real WAV and reference transcript, then run the Gnani evaluation. Preview mode prepares audible files without inventing model scores.</p></div>
+        <div id="results-content" class="hidden">
+          <div id="summary-strip" class="summary-strip"></div>
+          <div id="results-cards" class="result-cards"></div>
+          <div class="comparison-panel panel"><h3>Word error rate by signal path</h3><p>Lower is better. WER can exceed 100% if there are many insertion errors.</p><div id="wer-chart" class="wer-chart"></div></div>
+          <div id="run-notice" class="run-notice"></div>
+        </div>
+      </section>
+      <section id="history" class="history-section">
+        <div class="section-heading"><div><span class="section-kicker">03 / EVIDENCE</span><h2>Experiment history</h2></div><a href="/api/export.csv" class="export">↓ EXPORT CSV</a></div>
+        <div class="panel history-panel"><div id="run-list" class="run-list"><div class="empty-row">No runs saved.</div></div></div>
+      </section>
+      <footer><span>shor © 2026</span><span>Original implementation · Real results only · Locally stored recordings</span></footer>
+    </div>
+  </main>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

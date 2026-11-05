@@ -1,0 +1,2 @@
+audio_path,reference,language,profile,snr_db,telephony,seed,critical_terms
+recordings/your_recording_01.wav,Replace with exactly what the speaker said,hi-IN,traffic_synthetic,8,true,42,important phrase|500
