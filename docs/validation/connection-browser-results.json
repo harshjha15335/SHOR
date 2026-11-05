@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "checks": [
+    "desktop and mobile: actual missing-credential panel, non-billable refresh, blocked live control, preview remains available, no horizontal overflow",
+    "UI test double: new credential state enables live without falsely validating authentication",
+    "UI test double: status outage disables live and preserves preview"
+  ],
+  "provider_requests": 0,
+  "screenshots": "Actual server missing-credential state, captured before test doubles"
+}

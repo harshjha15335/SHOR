@@ -153,6 +153,11 @@ def health():
             'gnani':status, 'model_options':['prisma-v2.5','prisma-v3.0'],
             'data_policy':'Private local storage; seven-day default retention on access; delete runs explicitly.'}
 
+@app.get('/api/connection')
+def connection_status():
+    from .connection import snapshot
+    return snapshot()
+
 @app.get('/api/runs')
 def runs(q: str='', language: str='', model: str='', profile: str='', mode: str=''):
     records = storage.list_runs()

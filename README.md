@@ -83,3 +83,7 @@ Keep recordings, filled manifests, raw evidence and credentials private. `.gitig
 The supplied brief targets the Noise Canceller Award within the Great Indian AI Internship Challenge and cites 10 November 2026, 11:59 PM IST. These terms and current registration requirements were not independently reverified. Check the [official programme page](https://www.gnani.ai/internship) before submission. [Submission materials](docs/SUBMISSION_PACKAGE.md) are drafts with explicit evidence gaps.
 
 Kasauti is credited as conceptual inspiration only. SHOR's scope is independently implemented speech reliability measurement and reference-free recovery. No Kasauti code/assets or results are claimed. No new license or ownership representation is made; resolve rights and contributor permissions before distribution under a chosen license.
+
+## Gnani connection panel
+
+The website shows server credential availability, a labeled startup-policy snapshot and actual observed authentication separately. **Recheck connection** reads status without Gnani calls or credit use. A saved HTTP secret may still require binding/application to the running environment. Keep credentials server-side; no browser key entry is needed. See [connection fix](docs/GNANI_CONNECTION_FIX.md).

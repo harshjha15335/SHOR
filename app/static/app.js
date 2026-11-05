@@ -1,6 +1,6 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
-const state = { currentRun: null, keyConfigured: false, selectedAudio: null, recording: false, chunks: [], stream: null, audioContext: null, processor: null, micInput: null, started: 0 };
+const state = { currentRun: null, keyConfigured: false, connection: null, connectionRequest: null, selectedAudio: null, recording: false, chunks: [], stream: null, audioContext: null, processor: null, micInput: null, started: 0 };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = v => typeof v === 'number' ? v.toFixed(2) + '%' : '—';
 const status = (msg, bad=false) => { $('form-status').style.color = bad ? '#ffa398' : '#c5f44b'; $('form-status').textContent=msg; };
@@ -121,6 +121,37 @@ function renderRun(r){
   $('run-notice').textContent=`Source: ${r.provenance.audio}. Noise: ${r.provenance.noise}. Recovery: ${r.provenance.recovery}. ${r.caveat} Run ID: ${r.id}`;
   document.querySelector('#results').scrollIntoView({behavior:'smooth',block:'start'});
 }
+async function refreshConnection(){
+ if(state.connectionRequest)return state.connectionRequest;
+ state.connectionRequest=(async()=>{
+  $('recheck-connection').disabled=true;
+  try{
+   const response=await fetch('/api/connection',{cache:'no-store'});
+   if(!response.ok)throw new Error('Connection status unavailable');
+   const d=await response.json();state.connection=d;state.keyConfigured=d.key_present;
+   $('connection-title').textContent=d.title;
+   $('connection-explanation').textContent=d.explanation;
+   const g=d.gnani||{};
+   $('connection-checks').innerHTML=[`Server credential: ${d.key_present?'available':'not attached'}`,`Network policy: ${d.policy_allows_endpoint==null?'unknown':d.policy_allows_endpoint?'permits endpoint':'endpoint not permitted'}`,`Live authentication: ${g.authentication_validated?'previous success':'not validated'}`,`Last error: ${d.last_error_code||'none observed'}`].map(t=>`<span>${esc(t)}</span>`).join('');
+   $('connection-actions').innerHTML=(d.actions||[]).map(t=>`<li>${esc(t)}</li>`).join('');
+   $('connection-checked-at').textContent=`Checked ${new Date(d.checked_at).toLocaleTimeString()}. No Gnani requests made. Network policy is a server-startup snapshot; actual connectivity is not tested by this button.`;
+   $('system-text').textContent=!d.key_present?'Credential not attached · preview ready':d.status==='validated'?'Real request observed this session':'Credential available · inspect connection';
+   $('connection-observations').textContent=`Network response: ${g.network_reachable==null?'not observed':g.network_reachable?'received':'unavailable'}. Validated models: ${(g.validated_models||[]).join(', ')||'none'}. Last success: ${g.last_successful_request_at||'none'}. Last error: ${d.last_error_code||'none observed'}.`;
+   $('system-dot').classList.toggle('amber',d.status!=='validated');
+   $('live-button').disabled=!d.can_attempt_live;
+   $('live-button').title=d.can_attempt_live?'Requires explicit approval for three potentially billable requests':'Attach the saved credential to this server, then recheck connection';
+   return d;
+  }catch(e){
+   state.connection=null;state.keyConfigured=false;
+   $('connection-title').textContent='Cannot read server connection status';
+   $('connection-explanation').textContent='The website could not reach its status endpoint. Recheck after the server is available. No Gnani request was made.';
+   $('connection-checks').textContent='';$('connection-actions').textContent='';
+   $('system-text').textContent='Server status unavailable';$('system-dot').classList.add('amber');$('live-button').disabled=true;
+   return null;
+  }finally{$('recheck-connection').disabled=false;state.connectionRequest=null;}
+ })();
+ return state.connectionRequest;
+}
 async function runExperiment(mode){
   if(!state.selectedAudio){status('Choose or record a PCM WAV first.',true);return;}
   const form=new FormData($('experiment-form'));
@@ -128,7 +159,7 @@ async function runExperiment(mode){
   form.set('approved_api_calls',mode==='live'&&$('approve-api-calls').checked?'3':'0');
   form.set('mode',mode);form.set('telephony',$('telephony').checked?'true':'false');
   if(!$('ambience_file').files.length)form.delete('ambience_file');
-  if(mode==='live'&&!state.keyConfigured){status('Set GNANI_API_KEY in .env and restart the server before live inference.',true);return;}
+  if(mode==='live'){const connection=await refreshConnection();if(!connection?.can_attempt_live){status('Live access is unavailable. Follow the Gnani connection steps above; your saved key may not be attached to this server.',true);$('gnani-connection').scrollIntoView({behavior:'smooth'});return;}}
   if(mode==='live'&&!$('approve-api-calls').checked){status('Approve the three potentially billable requests before running live inference.',true);return;}
   const live=$('live-button'), preview=$('preview-button');live.disabled=true;preview.disabled=true;
   status(mode==='live'?'Calling Gnani Prisma on three actual audio variants; results will be saved.':'Generating three audio variants locally; no Gnani API calls.');
@@ -137,7 +168,7 @@ async function runExperiment(mode){
     const data=await res.json();if(!res.ok)throw new Error(data.detail||'Request failed');
     renderRun(data);await loadHistory();await loadSummary();
     status(mode==='live'?'Real evaluation finished. Inspect the raw transcripts, failures and metrics.':'Audio-only preview generated. Play all three signals; no scores were invented.');
-  }catch(e){status(e.message||'Evaluation failed.',true)}finally{live.disabled=false;preview.disabled=false;}
+  }catch(e){status(e.message||'Evaluation failed.',true)}finally{preview.disabled=false;await refreshConnection();}
 }
 async function loadSummary(){
  try{
@@ -181,12 +212,9 @@ async function boot(){
   });
   $('experiment-form').addEventListener('submit',e=>{e.preventDefault();runExperiment('live');});
   $('preview-button').addEventListener('click',()=>runExperiment('preview'));
-  try {const r=await (await fetch('/api/health')).json();state.keyConfigured=r.gnani_key_configured;
-    const g=r.gnani||{};
-    $('system-text').textContent=!state.keyConfigured?'No Gnani key · preview ready':g.authentication_validated?'Live request validated · inspect model evidence':'Key present · live access unverified';
-    $('connection-observations').textContent=`Key present: ${state.keyConfigured?'yes':'no'}. Network reachable: ${g.network_reachable==null?'not observed':g.network_reachable?'yes':'no'}. Authentication validated: ${g.authentication_validated?'yes':'no'}. Validated models: ${(g.validated_models||[]).join(', ')||'none'}. Last success: ${g.last_successful_request_at||'none'}. Last error: ${g.last_connection_error?.code||'none recorded'}. Observations apply only to this process.`;
-    $('system-dot').classList.toggle('amber',!g.authentication_validated);
-  }catch(e){$('system-text').textContent='API server unavailable';}
+  $('recheck-connection').addEventListener('click',refreshConnection);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshConnection();});
+  await refreshConnection();
   loadHistory();loadSummary();
 }
 boot();

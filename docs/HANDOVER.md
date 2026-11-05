@@ -6,6 +6,10 @@ The baseline local MVP is now a tested research workflow: detailed transcript er
 
 **No real Gnani inference, real speech benchmark, held-out recovery gain, public deployment, video or competition submission is claimed.** External access and real consented speech remain essential blockers. Untuned acoustic thresholds are hypotheses, not learned or validated improvements.
 
+## Latest website connection correction
+
+The visible Gnani setup/recheck flow now distinguishes a saved key from a runtime binding, retains audio preview, and disables live submission while no credential/status is available. `GET /api/connection` makes no provider request. Browser focus and pre/post-live checks refresh state. See `docs/GNANI_CONNECTION_FIX.md` for changes and new validation. Actual connection remains externally blocked.
+
 ## B. Engineering changes
 
 | Files | Delivered behavior |
@@ -70,7 +74,7 @@ Tests use synthetic WAV fixtures and clearly labeled HTTP doubles. Their numeric
 
 ## G. Quality assurance
 
-Baseline: **22 passed**. Final integrated suite: **175 passed, 0 failed**, one Starlette/httpx deprecation warning, in 2.65 seconds on this instance.
+Baseline: **22 passed**. Final integrated suite: **190 passed, 0 failed**, one Starlette/httpx deprecation warning, in 2.71 seconds on this instance.
 
 Commands actually executed:
 
@@ -105,7 +109,7 @@ No public deployment or provider account provisioning was performed. No deployme
 
 | Gate | Status | Evidence / limit |
 |---|---|---|
-| 1 Software health | PASS | 175 tests; backend/browser upload, playback, history/export/deletion across three viewport sizes |
+| 1 Software health | PASS | 190 tests; backend/browser upload, playback, history/export/deletion across three viewport sizes |
 | 2 Gnani authenticity | BLOCKED | No runtime key or endpoint access; no live transcript/request ID |
 | 3 Evaluation quality | PARTIAL | Correct tested diagnostics and collection pipeline; zero reviewed real samples evaluated |
 | 4 Recovery quality | PARTIAL | Reference-free policy and safety/software tests; no held-out ASR comparison or measured gains |
