@@ -61,7 +61,7 @@ def test_live_records_actual_adapter_provenance_without_fabricating(monkeypatch,
                 'detected_language':'en-IN','wall_time_seconds':0.1,'provider_latency_seconds':None}
     monkeypatch.setattr(main,'transcribe',fake_transcribe)
     r=client.post('/api/evaluate',files={'audio_file':('sample.wav',audio,'audio/wav')},
-                  data={'mode':'live','reference':'hello world','model':'prisma-v2.5','language':'en-IN','profile':'broadband'})
+                  data={'mode':'live','reference':'hello world','model':'prisma-v2.5','language':'en-IN','profile':'broadband','approved_api_calls':'3'})
     assert r.status_code==200,r.text
     assert len(called)==3
     assert r.json()['status']=='complete'

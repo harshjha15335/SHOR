@@ -1,91 +1,78 @@
 #!/usr/bin/env python3
-"""Reproducible, real-Gnani multi-file ASR benchmark. Zero invented transcripts.
-
-Example:
-    python scripts/batch_benchmark.py --manifest docs/benchmark-manifest-template.csv --output results.csv --limit 5
-
-Important: requests use credits (three calls per row). Only use consented audio.
-"""
+"""Auditable paired-model and recovery evaluator. No live calls without explicit budget."""
 from __future__ import annotations
 import argparse
-import csv
 import hashlib
+import json
 import os
+import platform
+import subprocess
 import sys
+from datetime import datetime,timezone
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from uuid import uuid4
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from dotenv import load_dotenv
-from app.audio import create_variants, decode_wav, encode_wav
-from app.gnani import transcribe, configured, GnaniError
-from app.metrics import score, compare
+from app.audio import create_variants,encode_wav
+from app.benchmark import validate_manifest
+from app.gnani import transcribe,configured,GnaniError
+from app.metrics import score
+from app.recovery import recover
 
 
 def main():
-    parser=argparse.ArgumentParser(description="Paired ASR reliability benchmark on real Gnani Prisma calls")
-    parser.add_argument('--manifest',required=True,help="CSV with audio_path,reference,language,profile,snr_db,telephony,seed,critical_terms")
-    parser.add_argument('--output',default='benchmark_results.csv')
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--manifest',required=True)
+    parser.add_argument('--output',default='evidence/raw_results/benchmark.jsonl')
     parser.add_argument('--model',choices=['prisma-v2.5','prisma-v3.0'],default='prisma-v2.5')
-    parser.add_argument('--limit',type=int,default=10,help="Safety cap on number of samples (3 calls per sample)")
-    parser.add_argument('--dry-run',action='store_true',help="Validate manifest and audio; no API calls")
-    args=parser.parse_args()
-    load_dotenv()
-    manifest=Path(args.manifest).resolve()
-    if not manifest.exists():parser.error('Manifest file does not exist')
-    if not args.dry_run and not configured():parser.error('GNANI_API_KEY is missing. Copy .env.example to .env first.')
-    with manifest.open(encoding='utf-8-sig',newline='') as f: rows=list(csv.DictReader(f))
-    if not rows:parser.error('Manifest contains no data')
-    if args.limit <= 0:parser.error('--limit must be positive')
-    selected=rows[:args.limit]
-    print(f"Rows: {len(selected)}; API calls: {0 if args.dry_run else len(selected)*3}; model: {args.model}")
-    if not args.dry_run: print('These are real paid/credit-consuming transcriptions.')
-    out=[]
-    for idx,row in enumerate(selected,1):
-        path=(manifest.parent / row['audio_path']).resolve()
-        if not path.is_file() or path.suffix.lower()!='.wav':
-            print(f"Skipped row {idx}: invalid/missing WAV {path}",file=sys.stderr);continue
-        raw=path.read_bytes()
-        try:
-            audio=decode_wav(raw)
-            profile=row.get('profile','traffic_synthetic')
-            snr=float(row.get('snr_db') or 8)
-            telephony=row.get('telephony','true').lower() in ('1','true','yes')
-            seed=int(row.get('seed') or 42)
-            if profile=='uploaded_ambience':
-                print(f"Skipped row {idx}: uploaded_ambience is supported by web app; batch manifest uses synthetic profiles only",file=sys.stderr);continue
-            waves=create_variants(audio,profile,snr,telephony,seed)
-        except (ValueError, KeyError) as exc:
-            print(f"Skipped row {idx}: {exc}",file=sys.stderr);continue
-        ref=row.get('reference','')
-        if not ref.strip():
-            print(f"Skipped row {idx}: reference transcript missing",file=sys.stderr);continue
-        terms=[t.strip() for t in row.get('critical_terms','').split('|') if t.strip()]
-        record={'sample':idx,'source':row['audio_path'],'audio_sha256':hashlib.sha256(raw).hexdigest(),
-                'language':row.get('language','hi-IN'),'model':args.model,'profile':profile,'snr_db':snr,'telephony':telephony,'seed':seed}
-        if args.dry_run:
-            print(f"[{idx}] VALIDATED {path.name} ({len(audio)/16000:.1f}s); variants = {','.join(waves)}")
-            continue
-        per={}
-        for variant,wave in waves.items():
-            try:
-                transcript=transcribe(encode_wav(wave),record['language'],args.model)
-                m=score(ref,transcript['transcript'],terms)
-                per[variant]=m
-                out.append(record|{'variant':variant,'status':'real','reference':ref,'transcript':transcript['transcript'],
-                                   'wer':m['wer'],'cer':m['cer'],'word_edits':m['word_edits'],
-                                   'reference_words':m['reference_words'],'critical_recall':m['critical_recall'],
-                                   'api_request_id':transcript.get('request_id'),'elapsed_s':transcript['wall_time_seconds'],'error':''})
-            except (GnaniError,ValueError) as exc:
-                out.append(record|{'variant':variant,'status':'error','reference':ref,'transcript':'',
-                                   'wer':'','cer':'','word_edits':'','reference_words':'','critical_recall':'',
-                                   'api_request_id':'','elapsed_s':'','error':str(exc)})
-        delta=compare(per.get('degraded'),per.get('recovered'))
-        print(f"[{idx}] {path.name} | degraded WER={per.get('degraded',{}).get('wer','ERROR')} | recovery change={delta.get('wer_change_percentage_points','n/a') if delta else 'n/a'} pp")
-        # Save progressively so partial results are retained if there is a later failure.
-        output=Path(args.output)
-        with output.open('w',encoding='utf-8',newline='') as f:
-            writer=csv.DictWriter(f,fieldnames=list(out[0]));writer.writeheader();writer.writerows(out)
-    if args.dry_run: print('DRY RUN COMPLETE — zero Gnani API requests; no benchmark scores.')
-    else:print('Saved',args.output,'— contains only real Gnani API results or explicit errors.')
+    parser.add_argument('--models',nargs='+',choices=['prisma-v2.5','prisma-v3.0'],help='Paired models; same source/configuration')
+    parser.add_argument('--limit',type=int,default=10)
+    parser.add_argument('--dry-run',action='store_true')
+    parser.add_argument('--allow-live',action='store_true',help='Explicitly authorize planned live requests')
+    parser.add_argument('--max-api-calls',type=int,default=0,help='Approved total request budget; never automatically retry')
+    args=parser.parse_args(); load_dotenv()
+    if args.limit<1: parser.error('--limit must be positive')
+    try: rows,validation=validate_manifest(Path(args.manifest))
+    except (ValueError,OSError) as exc: parser.error(str(exc))
+    rows=rows[:args.limit]; models=list(dict.fromkeys(args.models or [args.model]))
+    if 'prisma-v2.5' in models and any(r['language']=='indic-auto' for r in rows): parser.error('indic-auto is incompatible with prisma-v2.5')
+    planned=len(rows)*len(models)*4
+    print(json.dumps({'validation':validation,'selected_samples':len(rows),'models':models,'planned_api_calls':0 if args.dry_run else planned},ensure_ascii=False))
+    # Exercise preprocessing even on dry run; validate complete manifest before any call.
+    prepared=[]
+    for row in rows:
+        variants=create_variants(row['_audio'],row['noise_profile'],row['_snr'],row['_telephony'],row['_seed'],row.get('_ambience'))
+        fixed,fixed_decision=recover(variants['degraded'],'fixed')
+        adaptive,decision=recover(variants['degraded'],'adaptive')
+        prepared.append((row,{'clean':variants['clean'],'degraded':variants['degraded'],'fixed':fixed,'adaptive':adaptive},{'fixed':fixed_decision,'adaptive':decision}))
+    if args.dry_run:
+        print('DRY RUN COMPLETE: all selected audio processed; zero API requests and no measured accuracy.'); return
+    if not args.allow_live or args.max_api_calls<planned: parser.error(f'Live execution needs --allow-live and approved --max-api-calls >= {planned}')
+    if not configured(): parser.error('GNANI_API_KEY is unavailable in the runtime')
+    output=Path(args.output)
+    if output.exists(): parser.error('Output already exists; choose a fresh filename to preserve prior evidence')
+    output.parent.mkdir(parents=True,exist_ok=True)
+    experiment=str(uuid4()); calls=0; failures=0
+    code_commit=subprocess.run(['git','rev-parse','HEAD'],capture_output=True,text=True,check=True).stdout.strip()
+    with output.open('x',encoding='utf-8') as f:
+        for row,variants,decisions in prepared:
+            for model in models:
+                for variant,audio in variants.items():
+                    content=encode_wav(audio)
+                    record={'schema_version':1,'experiment_id':experiment,'sample_id':row['sample_id'],'speaker_id':row['speaker_id'],'dataset_split':row['dataset_split'],'language':row['language'],'condition':row['audio_condition'],'condition_origin':row['actual_or_synthetic_condition'],'model':model,'format':'verbatim','variant':variant,'source_sha256':row['file_sha256'],'audio_sha256':hashlib.sha256(content).hexdigest(),'reference':row['reference_transcript'],'critical_terms':row['critical_terms'].split('|'),'noise_profile':row['noise_profile'],'configured_snr_db':row['_snr'],'telephone_simulation':row['_telephony'],'seed':row['_seed'],'recovery':decisions.get(variant),'requested_at':datetime.now(timezone.utc).isoformat(),'metrics':None,'code_commit':code_commit,'python_version':platform.python_version(),'dataset_metadata':{k:row[k] for k in ['consent_status','reference_review_status','transcript_script_convention','code_mixed','recording_environment','recording_device_category','original_sample_rate','processed_sample_rate','duration_seconds','source_utterance_id']}}
+                    # Calls remain within the preflight cap; no hidden retry.
+                    calls+=1
+                    try:
+                        record.update(transcribe(content,row['language'],model))
+                        try:
+                            record['metrics']=score(row['reference_transcript'],record['transcript'],record['critical_terms'])
+                        except ValueError as exc:
+                            failures+=1; record['metrics_error']=str(exc)
+                    except (GnaniError,ValueError) as exc:
+                        failures+=1; record.update(status='error',error=str(exc),error_code=getattr(exc,'code','evaluation_error'),transcript=None)
+                    record['completed_at']=datetime.now(timezone.utc).isoformat()
+                    f.write(json.dumps(record,ensure_ascii=False)+'\n');f.flush();os.fsync(f.fileno())
+    print(json.dumps({'output':str(output),'requests_attempted':calls,'errors':failures,'experiment_id':experiment}))
+    if failures: raise SystemExit(1)
 
 if __name__=='__main__':main()

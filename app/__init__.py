@@ -1,1 +1,1 @@
-"""SHOR//LAB — original speech reliability lab for Indian audio."""
+"""SHOR — original speech reliability lab for Indian audio."""

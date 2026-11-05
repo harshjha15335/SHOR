@@ -1,0 +1,6 @@
+# Private local transcripts, recordings and generated results never enter Git.
+raw_results/*
+aggregate_results/*
+failure_cases/*
+*.wav
+*.sqlite3

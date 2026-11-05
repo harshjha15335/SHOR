@@ -4,13 +4,13 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="theme-color" content="#0b1014" />
-<title>shor — Indic Speech Reliability</title>
+<title>SHOR — Indic Speech Reliability</title>
 <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
 <div class="shell">
   <aside class="sidebar">
-    <a class="brand" href="/" aria-label="shor home"><span class="brand-icon">S<span>//</span></span><span>shor<small>INDIC SPEECH INTELLIGENCE</small></span></a>
+    <a class="brand" href="/" aria-label="SHOR home"><span class="brand-icon">S<span>//</span></span><span>SHOR<small>INDIC SPEECH INTELLIGENCE</small></span></a>
     <div class="nav-caption">WORKSPACE</div>
     <a href="#workbench" class="nav-link active"><span class="nav-icon">◈</span> Stress workbench <span class="nav-arrow">↗</span></a>
     <a href="#results" class="nav-link"><span class="nav-icon">▤</span> Evaluation results</a>
@@ -18,7 +18,7 @@
     <div class="sidebar-bottom">
       <div class="side-label">SYSTEM STATUS</div>
       <div class="system-status"><span id="system-dot" class="dot amber"></span><span id="system-text">Checking configuration</span></div>
-      <p>Built for evidence, not impressive-looking fake benchmarks.</p>
+      <details id="connection-details" class="connection-details"><summary>Live connection observations</summary><div id="connection-observations">Not yet observed.</div></details><p>Use consented recordings. Keep real and simulated conditions separate.</p>
       <div class="side-divider"></div>
       <div class="powered">POWERED BY <strong>GNANI PRISMA</strong><br /><span>Voice AI for India</span></div>
     </div>
@@ -26,7 +26,7 @@
   <main class="main">
     <header class="topbar">
       <div class="crumb">EXPERIMENTS <span>/</span> SPEECH RELIABILITY</div>
-      <div class="topright"><span class="tag">RESEARCH PREVIEW · v0.1</span> <a href="https://docs.gnani.ai/api/STT/speech-to-text" target="_blank" rel="noopener noreferrer">API DOCS ↗</a></div>
+      <div class="topright"><span class="tag">RESEARCH PREVIEW · v0.2</span> <a href="https://docs.gnani.ai/api/STT/speech-to-text" target="_blank" rel="noopener noreferrer">API DOCS ↗</a></div>
     </header>
     <div class="content">
       <section class="hero">
@@ -61,11 +61,14 @@
               <div class="range-head"><label for="snr">SIGNAL-TO-NOISE RATIO</label><output id="snr-output" for="snr">8 dB</output></div>
               <input id="snr" name="snr_db" type="range" min="-5" max="30" step="1" value="8" /><div class="range-ends"><span>HARDER TO HEAR</span><span>CLEANER</span></div>
               <label class="toggle-row"><span><strong>Simulated telephone channel</strong><small>300–3400 Hz + 8 kHz round-trip</small></span><span class="switch"><input type="checkbox" name="telephony" id="telephony" checked><span class="track"></span></span></label>
+              <div class="two-cols"><label class="field-group">RECOVERY<select id="recovery-mode" name="recovery_mode"><option value="fixed">Fixed spectral filtering</option><option value="adaptive">Adaptive acoustic policy (experimental)</option><option value="passthrough">Pass-through</option></select></label><label class="field-group">SCORING<select id="scoring-mode" name="scoring_mode"><option value="unicode">Unicode normalized</option><option value="strict">Strict raw script</option></select></label></div>
+              <label class="field-group">SOURCE CONDITION<select name="audio_condition" id="audio-condition"><option value="unspecified">Unspecified — not verified</option><option value="quiet_real">Actual quiet recording</option><option value="noisy_real">Actual noisy recording</option><option value="telephony_real">Actual consented phone recording</option><option value="synthetic">Synthetic source / test fixture</option></select></label>
+              <div class="two-cols"><label class="field-group">SPEAKER PSEUDONYM<input name="speaker_id" id="speaker-id" maxlength="80" placeholder="Optional, no real name"></label><label class="field-group">DATASET SPLIT<select name="dataset_split" id="dataset-split"><option value="unassigned">Unassigned</option><option value="dev">Development</option><option value="validation">Validation</option><option value="test">Held-out test</option></select></label></div>
               <div class="two-cols"><label class="field-group">REPRODUCIBILITY SEED<input name="seed" id="seed" type="number" min="0" max="10000000" value="42" /></label><label class="field-group">RUN NAME<input name="title" id="title" value="First Indic stress test" maxlength="90"></label></div>
             </div>
             <div class="run-box"><div class="run-title">READY TO TEST <span id="api-call-count">3 API CALLS</span></div>
               <p id="run-explainer">Live mode sends three actual transcriptions to Gnani. Each may consume credits. Preview mode makes zero API calls.</p>
-              <div class="run-actions"><button class="primary-button" type="submit" id="live-button" name="mode" value="live">▶ Run real Gnani evaluation</button><button class="button-secondary" type="button" id="preview-button">Preview audio only</button></div>
+              <label class="credit-consent"><input id="approve-api-calls" type="checkbox"> I approve three potentially billable API requests for this run. Preview uses zero.</label><div class="run-actions"><button class="primary-button" type="submit" id="live-button" name="mode" value="live">▶ Run real Gnani evaluation</button><button class="button-secondary" type="button" id="preview-button">Preview audio only</button></div>
               <div id="form-status" class="form-status" aria-live="polite"></div>
             </div>
           </div>
@@ -75,17 +78,20 @@
         <div class="section-heading"><div><span class="section-kicker">02 / EVALUATION</span><h2>What the model actually heard</h2></div><span id="results-state" class="status-chip">NO EXPERIMENT YET</span></div>
         <div id="empty-results" class="empty-state"><span class="empty-icon">◉</span><strong>No measurements yet.</strong><p>Provide a real WAV and reference transcript, then run the Gnani evaluation. Preview mode prepares audible files without inventing model scores.</p></div>
         <div id="results-content" class="hidden">
+          <div class="panel research-detail"><h3>Reference and recovery decision</h3><p id="reference-display"></p><p id="recovery-decision"></p><details><summary>Acoustic observations and policy provenance</summary><pre id="recovery-features"></pre></details><p id="clarification-notice"></p></div>
           <div id="summary-strip" class="summary-strip"></div>
           <div id="results-cards" class="result-cards"></div>
           <div class="comparison-panel panel"><h3>Word error rate by signal path</h3><p>Lower is better. WER can exceed 100% if there are many insertion errors.</p><div id="wer-chart" class="wer-chart"></div></div>
           <div id="run-notice" class="run-notice"></div>
         </div>
       </section>
+      <section id="benchmark-overview" class="history-section"><div class="section-heading"><div><span class="section-kicker">03 / BENCHMARK</span><h2>Recorded evidence overview</h2></div></div><div class="panel research-detail" id="benchmark-summary">Loading evidence summary…</div></section>
       <section id="history" class="history-section">
-        <div class="section-heading"><div><span class="section-kicker">03 / EVIDENCE</span><h2>Experiment history</h2></div><a href="/api/export.csv" class="export">↓ EXPORT CSV</a></div>
+        <div class="section-heading"><div><span class="section-kicker">03 / EVIDENCE</span><h2>Experiment history</h2></div><div class="export-links"><a href="/api/export.csv" class="export">↓ EXPORT CSV</a><a href="/api/evidence.json" class="export">↓ JSON EVIDENCE</a></div></div>
+        <form id="history-filters" class="history-filters"><label class="field-group">SEARCH<input id="history-search" name="q" placeholder="Run name"></label><label class="field-group">LANGUAGE<select name="language" id="history-language"><option value="">All languages</option><option value="hi-IN">Hindi</option><option value="en-IN">English / Hinglish</option><option value="ta-IN">Tamil</option><option value="indic-auto">Indic auto</option></select></label><label class="field-group">MODEL<select name="model" id="history-model"><option value="">All models</option><option value="prisma-v2.5">Prisma v2.5</option><option value="prisma-v3.0">Prisma v3.0</option></select></label><label class="field-group">NOISE<select name="profile" id="history-profile"><option value="">All profiles</option><option value="none">No added noise</option><option value="traffic_synthetic">Synthetic traffic</option><option value="crowd_synthetic">Synthetic crowd</option><option value="broadband">Broadband</option><option value="hum_synthetic">Synthetic hum</option><option value="uploaded_ambience">Uploaded ambience</option></select></label><label class="field-group">INFERENCE<select name="mode" id="history-mode"><option value="">All runs</option><option value="preview">Preview only</option><option value="live">Live attempts</option></select></label><button class="button-secondary" type="submit">Filter history</button></form>
         <div class="panel history-panel"><div id="run-list" class="run-list"><div class="empty-row">No runs saved.</div></div></div>
       </section>
-      <footer><span>shor © 2026</span><span>Original implementation · Real results only · Locally stored recordings</span></footer>
+      <footer><span>SHOR © 2026</span><span>Original implementation · Real results only · Locally stored recordings</span></footer>
     </div>
   </main>
 </div>

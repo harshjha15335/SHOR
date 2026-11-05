@@ -5,3 +5,14 @@ __pycache__/
 data/
 *.pyc
 .DS_Store
+
+evidence/raw_results/*
+!evidence/raw_results/.gitkeep
+evidence/aggregate_results/*
+!evidence/aggregate_results/.gitkeep
+evidence/failure_cases/*
+!evidence/failure_cases/.gitkeep
+samples/
+*.wav
+*.sqlite3
+.browser-test-output/

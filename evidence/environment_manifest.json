@@ -1,0 +1,7 @@
+{
+  "python": "3.12.14",
+  "platform": "Linux",
+  "baseline_commit": "b82591f11c1522ce356bd33a526dc0411e6a02aa",
+  "live_calls_executed": 0,
+  "note": "Software versions are pinned separately in requirements lock. This manifest describes development, not a live benchmark."
+}
