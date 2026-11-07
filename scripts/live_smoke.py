@@ -45,6 +45,8 @@ def main():
                 failed=True;record['metrics_error']=str(exc)
         except (GnaniError,ValueError) as exc:
             failed=True;record.update(status='error',error=str(exc),error_code=getattr(exc,'code','evaluation_error'),http_status=getattr(exc,'http_status',None),transcript=None,wall_time_seconds=round(time.perf_counter()-started,6))
+            if getattr(exc,'diagnostics',None) is not None:
+                record['private_http_diagnostics']=exc.diagnostics
         record['completed_at']=datetime.now(timezone.utc).isoformat()
         record['request_attempts']=1
         f.write(json.dumps(record,ensure_ascii=False)+'\n');f.flush();os.fsync(f.fileno())

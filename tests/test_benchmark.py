@@ -1,3 +1,4 @@
+import os
 """Software fixtures only: no real speakers, consent records or API evidence."""
 import csv,hashlib,json
 from pathlib import Path
@@ -226,4 +227,22 @@ def test_smoke_records_actual_failure_status_timing_and_private_file(tmp_path,mo
     assert len(calls)==1 and record['request_attempts']==1
     assert record['http_status']==403 and record['error_code']=='access_denied'
     assert record['wall_time_seconds']>=0 and record['transcript'] is None
-    assert output.stat().st_mode & 0o777 == 0o600
+    if os.name == 'posix':
+        assert output.stat().st_mode & 0o777 == 0o600
+
+
+def test_smoke_persists_private_error_diagnostics_without_public_data(tmp_path,monkeypatch):
+    from app.gnani import GnaniError
+    path,_=manifest(tmp_path);runner=load_runner('live_smoke')
+    monkeypatch.setattr(runner,'configured',lambda:True)
+    diagnostics={'http_status':403,'body':{'sanitized':{'detail':{'error_code':'SCOPE_NOT_ALLOWED'}}},'headers':{'x-request-id':'test-correlation'}}
+    def failed(*args):
+        raise GnaniError('Safe access denial','access_denied',403,diagnostics=diagnostics)
+    monkeypatch.setattr(runner,'transcribe',failed)
+    output=tmp_path/'private.jsonl'
+    monkeypatch.setattr('sys.argv',['smoke','--manifest',str(path),'--sample-id','fixture-1','--allow-one-live-call','--output',str(output)])
+    with pytest.raises(SystemExit):runner.main()
+    result=json.loads(output.read_text())
+    assert result['private_http_diagnostics']==diagnostics
+    if os.name == 'posix':
+        assert output.stat().st_mode & 0o777 == 0o600

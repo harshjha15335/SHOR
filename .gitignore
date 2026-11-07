@@ -16,3 +16,10 @@ samples/
 *.wav
 *.sqlite3
 .browser-test-output/
+
+# Local credentials and confidential evidence
+.env.*
+!.env.example
+private-evidence/
+*.sqlite
+*.db

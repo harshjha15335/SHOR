@@ -87,3 +87,8 @@ Kasauti is credited as conceptual inspiration only. SHOR's scope is independentl
 ## Gnani connection panel
 
 The website shows server credential availability, a labeled startup-policy snapshot and actual observed authentication separately. **Recheck connection** reads status without Gnani calls or credit use. A saved HTTP secret may still require binding/application to the running environment. Keep credentials server-side; no browser key entry is needed. See [connection fix](docs/GNANI_CONNECTION_FIX.md).
+
+## Windows development
+
+See [PowerShell setup and privacy notes](docs/WINDOWS_DEVELOPMENT.md) for cloning
+`feature/research-reliability`, Python3.12 setup, local preview and platform limits.

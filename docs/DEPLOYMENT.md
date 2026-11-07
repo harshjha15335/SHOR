@@ -90,3 +90,62 @@ A real smoke test requires a reviewed, consented speech sample and explicit
 one-call authorization. Three-path web runs require three-call approval; the
 four-path research runner requires four per model/sample. Timeouts may still be
 billed; no automatic retries or refund guarantees are provided.
+
+
+## Direct API evidence and deployment credential choice (7 November2026)
+
+The user reports a successful direct Windows Prisma v2.5 request (HTTP200,
+request ID [private correlation ID omitted]). This validates that
+reported direct credential/account path, not Codex HTTP-secret substitution
+or this deployment. See GNANI_ACCESS_DIAGNOSIS.md at the repository root.
+
+SHOR already reads server-side GNANI_API_KEY from the deployment environment.
+Use the intended environment's secret manager to provide the existing authorized
+provider key, or its supported HTTPS-destination-bound secret integration.
+An ignored checkout .env is an optional local-development fallback; injected
+variables take precedence. Never export an opaque Codex secret marker as a key
+for another deployment. Keep the key out of client-side code, logs and Git.
+
+No endpoint/provider change or proxy/TLS bypass is required or justified.
+Keep approved inherited network/trust configuration; restart the app after any
+intentional credential configuration update. A direct PowerShell success is
+not a successful SHOR application request and does not establish web-worker
+health. Do not execute a new transcription without an explicit request budget.
+
+## Final local demo candidate — 7 November2026
+
+Latest independent local run:203 tests pass; all30 locked versions match;
+no-index/no-deps installation confirms requirements already satisfied; pip check,
+scoped Ruff, compileall, JavaScript syntax and whitespace checks pass. Real
+provider HTTP is blocked during ordinary validation. Local Uvicorn startup,
+health, synthetic browser workflows, orderly shutdown, restart persistence,
+protected routes and public-mode missing-password rejection were exercised.
+See FINAL_DEMO_READINESS.md for evidence and qualifications.
+
+Candidate HTTPS ingress: `deploy/private-demo.nginx.conf.example`. Nginx/Caddy
+are not installed here, so configuration syntax, certificates, DNS, external
+HTTPS and remote access have NOT been validated. This file is a review candidate,
+not an active deployment. Do not load it or expose a port without approval.
+
+Before an approved private demo, provision the already approved host, a valid
+certificate and private persistent volume; supply GNANI_API_KEY and a strong
+SHOR_ACCESS_PASSWORD via server-side secrets; set SHOR_PUBLIC_MODE=true and
+SHOR_DATA_DIR to that volume. Run exactly one Uvicorn worker on127.0.0.1:8000,
+with access logs disabled and proxy headers trusted only from the local ingress:
+
+```bash
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 \
+  --workers 1 --no-access-log --proxy-headers --forwarded-allow-ips 127.0.0.1
+```
+
+Validate Nginx configuration, TLS, Basic auth, unauthenticated audio/export
+rejection, upload/time limits, deletion/retention and reboot persistence before
+promotion. Preserve proxy variables and TLS CA trust for outbound Gnani access.
+Never copy a Codex opaque marker into another deployment. Do not serve the
+private SQLite/WAV/evidence directories as static paths. Keep free-text upstream
+diagnostics out of access logs, website errors and public reports.
+
+A controlled deployment still needs provider/application live verification,
+ingress validation, disk/backup policy and explicit publication authorization.
+Local authentication is not multi-tenant production certification. No remote
+service, TLS listener, paid infrastructure or published endpoint was created.

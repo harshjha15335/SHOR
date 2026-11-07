@@ -51,10 +51,10 @@ def main():
     if not configured(): parser.error('GNANI_API_KEY is unavailable in the runtime')
     output=Path(args.output)
     if output.exists(): parser.error('Output already exists; choose a fresh filename to preserve prior evidence')
-    output.parent.mkdir(parents=True,exist_ok=True)
+    output.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
     experiment=str(uuid4()); calls=0; failures=0
     code_commit=subprocess.run(['git','rev-parse','HEAD'],capture_output=True,text=True,check=True).stdout.strip()
-    with output.open('x',encoding='utf-8') as f:
+    with open(output,'x',encoding='utf-8',opener=lambda path,flags:os.open(path,flags,0o600)) as f:
         for row,variants,decisions in prepared:
             for model in models:
                 for variant,audio in variants.items():
@@ -69,7 +69,9 @@ def main():
                         except ValueError as exc:
                             failures+=1; record['metrics_error']=str(exc)
                     except (GnaniError,ValueError) as exc:
-                        failures+=1; record.update(status='error',error=str(exc),error_code=getattr(exc,'code','evaluation_error'),transcript=None)
+                        failures+=1; record.update(status='error',error=str(exc),error_code=getattr(exc,'code','evaluation_error'),http_status=getattr(exc,'http_status',None),transcript=None)
+                        if getattr(exc,'diagnostics',None) is not None:
+                            record['private_http_diagnostics']=exc.diagnostics
                     record['completed_at']=datetime.now(timezone.utc).isoformat()
                     f.write(json.dumps(record,ensure_ascii=False)+'\n');f.flush();os.fsync(f.fileno())
     print(json.dumps({'output':str(output),'requests_attempted':calls,'errors':failures,'experiment_id':experiment}))

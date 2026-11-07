@@ -13,6 +13,7 @@ from threading import Lock
 import time
 
 import requests
+from .http_diagnostics import capture_error
 
 ENDPOINT = "https://api.vachana.ai/stt/v3"
 MODELS = {"prisma-v2.5", "prisma-v3.0"}
@@ -27,10 +28,12 @@ _state = {"network_reachable": None, "authentication_validated": False,
 class GnaniError(Exception):
     """Safe error details; never include a raw upstream body or exception text."""
 
-    def __init__(self, message: str, code: str = "provider_error", http_status: int | None = None):
+    def __init__(self, message: str, code: str = "provider_error", http_status: int | None = None, diagnostics: dict | None = None):
         super().__init__(message)
         self.code = code
         self.http_status = http_status
+        # Private CLI evidence only; never included in public status or exception text.
+        self.diagnostics = diagnostics
 
 
 def configured() -> bool:
@@ -110,7 +113,9 @@ def transcribe(wav_bytes: bytes, language: str, model: str) -> dict:
                 429: ("rate_limited", "Gnani rate limit reached; no automatic retry was made."),
             }
             code, message = errors.get(http_status, ("provider_unavailable" if http_status >= 500 else "provider_error", "Gnani service request failed."))
-            raise _failure(message, code, http_status)
+            failure = _failure(message, code, http_status)
+            failure.diagnostics = capture_error(response, api_key)
+            raise failure
         try:
             data = response.json()
         except ValueError:

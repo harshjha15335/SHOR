@@ -181,3 +181,17 @@ def test_actual_body_limit_not_only_declared_length():
   await main.BoundedUpload(downstream)({'type':'http','method':'POST','path':'/api/evaluate','headers':[(b'content-length',b'1')]},receive,send)
  asyncio.run(exercise())
  assert sent[0]['status']==413
+
+
+def test_private_provider_diagnostics_never_reach_web_or_exports(wav,monkeypatch):
+ from app.gnani import GnaniError
+ monkeypatch.setattr(main,'configured',lambda:True)
+ def failed(*args):
+  raise GnaniError('Safe access denial','access_denied',403,diagnostics={'body':{'detail':{'error_code':'SCOPE_NOT_ALLOWED'}},'headers':{'x-request-id':'private-correlation-only'}})
+ monkeypatch.setattr(main,'transcribe',failed)
+ response=post(wav,mode='live',approved_api_calls='3')
+ assert response.status_code==200
+ for text in [response.text,client.get('/api/evidence.json').text,client.get('/api/export.csv').text,client.get('/api/health').text]:
+  assert 'private-correlation-only' not in text
+  assert 'SCOPE_NOT_ALLOWED' not in text
+  assert 'private_http_diagnostics' not in text

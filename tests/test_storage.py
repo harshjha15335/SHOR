@@ -60,7 +60,7 @@ def test_invalid_variant_rejected():
 def test_file_symlink_not_served(tmp_path):
  r=record();storage.save(r,{'clean':b'test-only'})
  target=tmp_path/'outside';target.write_bytes(b'private')
- f=storage.AUDIO_DIR/r['id']/'clean.wav';f.unlink();f.symlink_to(target)
+ f=storage.AUDIO_DIR/r['id']/'clean.wav';f.unlink();_make_symlink(f,target)
  assert storage.audio_path(r['id'],'clean') is None
  assert storage.delete(r['id']);assert target.read_bytes()==b'private'
 
@@ -69,7 +69,7 @@ def test_run_directory_symlink_not_served_or_followed(tmp_path):
  import shutil
  folder=storage.AUDIO_DIR/r['id'];shutil.rmtree(folder)
  target=tmp_path/'outside';target.mkdir();(target/'clean.wav').write_bytes(b'private')
- folder.symlink_to(target,target_is_directory=True)
+ _make_symlink(folder,target,True)
  assert storage.audio_path(r['id'],'clean') is None
  assert storage.delete(r['id']);assert (target/'clean.wav').read_bytes()==b'private'
 
@@ -83,3 +83,12 @@ def test_nan_evidence_rejected():
  r=record(value=float('nan'))
  with pytest.raises(ValueError):storage.save(r,{'clean':b'test-only'})
  assert not (storage.AUDIO_DIR/r['id']).exists()
+
+
+def _make_symlink(link, target, is_directory=False):
+ try:
+  link.symlink_to(target,target_is_directory=is_directory)
+ except OSError as exc:
+  if getattr(exc,'winerror',None)==1314:
+   pytest.skip('Windows symlink test requires Developer Mode or symlink privilege')
+  raise
